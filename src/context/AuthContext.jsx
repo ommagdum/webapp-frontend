@@ -1,19 +1,36 @@
 import { createContext, useContext, useState } from 'react';
+import { authService } from '../services/api';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
 
-  const login = (token) => {
-    localStorage.setItem('token', token);
-    setIsLoggedIn(true);
+  const login = async (email, password) => {
+    try {
+      const response = await authService.login({ email, password });
+      console.log('Auth response:', response);
+      
+      if (response.data && response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        setIsLoggedIn(true);
+        return response;
+      } else {
+        throw new Error('No token received');
+      }
+    } catch (error) {
+      console.error('Login error in context:', error);
+      throw error;
+    }
   };
 
   const logout = () => {
     localStorage.removeItem('token');
     setIsLoggedIn(false);
   };
+
+  // Add this console log to debug
+  console.log('AuthContext state:', { isLoggedIn });
 
   return (
     <AuthContext.Provider value={{ isLoggedIn, login, logout }}>
@@ -29,5 +46,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-export default AuthContext;

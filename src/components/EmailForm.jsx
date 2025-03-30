@@ -1,31 +1,39 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const EmailForm = ({ onSubmit, disabled }) => {
   const [emailContent, setEmailContent] = useState('');
+
+  useEffect(() => {
+    const savedContent = localStorage.getItem('tempEmailContent');
+    if (savedContent) {
+      setEmailContent(savedContent);
+    }
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (emailContent.trim()) {
       onSubmit(emailContent);
+      localStorage.removeItem('tempEmailContent');
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mb-4">
+    <form onSubmit={handleSubmit}>
       <textarea
         value={emailContent}
         onChange={(e) => setEmailContent(e.target.value)}
         disabled={disabled}
-        placeholder="Enter email content to check"
-        className="w-full p-2 border rounded min-h-[100px]"
+        placeholder="Paste email content here..."
+        className="w-full p-4 border rounded-lg mb-4 min-h-[200px]"
         required
       />
       <button 
         type="submit"
         disabled={disabled || !emailContent.trim()}
-        className="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+        className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 disabled:opacity-50"
       >
-        Check Email
+        Analyze Now
       </button>
     </form>
   );

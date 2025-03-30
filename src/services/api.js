@@ -9,41 +9,53 @@ const api = axios.create({
   },
 });
 
-
+// Add request interceptor
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    // Make sure we're sending the token exactly as stored
+    config.headers.Authorization = `Bearer ${token.trim()}`;
+    console.log('Sending token:', config.headers.Authorization); // Debug log
   }
   return config;
 });
 
+// Response interceptor
 api.interceptors.response.use(
   response => response,
   error => {
+    console.error('API Error:', error.response); // Debug log
     if (error.response?.status === 401) {
-      if (localStorage.getItem('token')) {
-        localStorage.removeItem('token');
-        window.location.href = '/login';
-      }
+      localStorage.removeItem('token');
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }
 );
 
 export const authService = {
-  login: (credentials) => api.post('/api/auth/login', credentials),
-  register: (userData) => api.post('/api/auth/register', userData),
+  login: async (credentials) => {
+    try {
+      const response = await api.post('/api/auth/login', credentials);
+      console.log('Login response:', response); 
+      return response;
+    } catch (error) {
+      console.error('Auth error:', error);
+      throw error;
+    }
+  }
 };
 
 export const spamService = {
-  checkEmail: (content) => {
-    return api.post('/api/predict', { content: String(content) });
+  checkEmail: async (content) => {
+    try {
+      const response = await api.post('/api/predict', { content });
+      return response;
+    } catch (error) {
+      console.error('Spam check error:', error);
+      throw error;
+    }
   }
-};
-const getAuthHeader = () => {
-  const token = localStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
 export default api;
