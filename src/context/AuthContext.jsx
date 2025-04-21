@@ -5,6 +5,8 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
+  const [isVerificationSent, setIsVerificationSent] = useState(false);
+  const [verificationToken, setVerificationToken] = useState(null);
 
   const login = async (email, password) => {
     try {
@@ -28,12 +30,44 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     setIsLoggedIn(false);
   };
-
-  // Add this console log to debug
+  
   console.log('AuthContext state:', { isLoggedIn });
 
+
+const register = async (email, password) => {
+  try {
+    // Send registration request
+    const response = await authService.register({ email, password });
+    
+    // If we get here, the registration was successful
+    // regardless of how the response is structured
+    setIsVerificationSent(true);
+    
+    // Check if verificationToken is in the response (for development)
+    if (response.data && response.data.verificationToken) {
+      setVerificationToken(response.data.verificationToken);
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Registration error:', error);
+    throw error;
+  }
+};
+
+  const verifyEmail = async (token) => {
+    try {
+      const response = await axios.get(`/api/auth/verify?token=${token}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ isLoggedIn, login, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn, login, logout, register, isVerificationSent,
+      verificationToken, setIsVerificationSent, verifyEmail
+     }}>
       {children}
     </AuthContext.Provider>
   );

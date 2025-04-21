@@ -31,7 +31,7 @@ const EmailForm = ({ onSubmit, disabled }) => {
       <button 
         type="submit"
         disabled={disabled || !emailContent.trim()}
-        className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 disabled:opacity-50"
+        className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 disabled:opacity-50 transform transition duration-200 hover:-translate-y-1 shadow hover:shadow-lg"
       >
         Analyze Now
       </button>

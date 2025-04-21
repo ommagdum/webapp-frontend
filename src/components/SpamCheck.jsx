@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import EmailForm from './EmailForm';
 import ResultDisplay from './ResultDisplay';
 import LoadingSpinner from './LoadingSpinner';
+import { useEffect } from 'react';
 
 function SpamCheck() {
   const [result, setResult] = useState(null);
@@ -18,7 +19,6 @@ function SpamCheck() {
     const savedContent = localStorage.getItem('tempEmailContent');
     if (savedContent) {
       handleEmailCheck(savedContent);
-      // Optional: clear the saved content after using it
       localStorage.removeItem('tempEmailContent');
     }
   }, []);
@@ -32,7 +32,6 @@ function SpamCheck() {
     setIsLoading(true);
     setError('');
     
-    // Debug logs
     console.log('Sending content:', content);
     console.log('Current token:', localStorage.getItem('token'));
     
@@ -70,11 +69,11 @@ function SpamCheck() {
           Powered by AI
         </div>
         
-        <h1 className="text-5xl font-bold text-gray-900 mb-6">
+        <h1 className="text-6xl font-bold text-gray-900 mb-6">
           Intelligent Email Protection
         </h1>
         
-        <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto">
+        <p className="text-[18px] text-gray-600 mb-12 max-w-2xl mx-auto">
           Advanced spam detection powered by machine learning. Protect your inbox 
           from unwanted messages with real-time analysis.
         </p>
@@ -93,6 +92,14 @@ function SpamCheck() {
             disabled={isLoading}
           />
 
+          {!isLoading && !result && (
+            <div className='text-center p-6'>
+              <p className='text-gray-600'>
+                Paste your email content in the box above and click "Analyze" to check for spam.
+              </p>
+            </div>
+          )}
+
           {isLoading && <LoadingSpinner />}
           
           {result && !isLoading && <ResultDisplay result={result} />}
@@ -101,5 +108,4 @@ function SpamCheck() {
     </div>
   );
 }
-
 export default SpamCheck;

@@ -5,6 +5,7 @@ import Register from './components/Auth/Register';
 import ProtectedRoute from './components/ProtectedRoute';
 import SpamCheck from './components/SpamCheck';
 import LandingPage from './components/LandingPage';
+import EmailVerification from './components/EmailVerification';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/verify" element={<EmailVerification />} />
           <Route 
             path="/dashboard" 
             element={

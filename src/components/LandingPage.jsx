@@ -28,13 +28,13 @@ const LandingPage = () => {
           <>
             <button 
               onClick={() => navigate('/login')} 
-              className="mr-4 text-gray-600 hover:text-gray-800"
+              className="mr-4 text-gray-600 hover:text-gray-800 "
             >
               Sign In
             </button>
             <button 
               onClick={() => navigate('/register')} 
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transform transition duration-200 hover:-translate-y-1 shadow hover:shadow-lg"
             >
               Sign Up
             </button>
@@ -55,11 +55,11 @@ const LandingPage = () => {
           Powered by AI
         </div>
         
-        <h1 className="text-5xl font-bold text-gray-900 mb-6">
+        <h1 className="text-6xl font-bold text-gray-900 mb-6">
           Intelligent Email Protection
         </h1>
         
-        <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto">
+        <p className="text-[18px] text-gray-600 mb-12 max-w-2xl mx-auto">
           Advanced spam detection powered by machine learning. Protect your inbox 
           from unwanted messages with real-time analysis.
         </p>
@@ -74,7 +74,7 @@ const LandingPage = () => {
           />
           <button 
             onClick={handleAnalyze}
-            className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700"
+            className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transform transition duration-200 hover:-translate-y-1 shadow hover:shadow-lg"
           >
             {isLoggedIn ? 'Analyze Now' : 'Sign In to Analyze'}
           </button>

@@ -43,6 +43,44 @@ export const authService = {
       console.error('Auth error:', error);
       throw error;
     }
+  },
+
+  register: async (userData) => {
+    try {
+      const response = await api.post('/api/auth/register', userData);
+      console.log('Registration API response:', response);
+      
+      // Return the entire response, not just data
+      return response;
+    } catch (error) {
+      console.error('Registration API error:', error);
+      
+      // If the error contains a message saying verification email was sent,
+      // we should treat this as a success
+      if (error.response?.data?.message?.includes('verification') || 
+          error.response?.status === 201) {
+        console.log('Registration successful but returned non-200 status');
+        return {
+          data: {
+            message: 'Registration successful. Please verify your email.',
+            verificationToken: error.response?.data?.verificationToken
+          }
+        };
+      }
+      
+      throw error;
+    }
+  },
+  
+  verifyEmail: async (token) => {
+    try {
+      const response = await api.get(`/api/auth/verify?token=${token}`);
+      console.log('Verification response:', response);
+      return response;
+    } catch (error) {
+      console.error('Verification error:', error);
+      throw error;
+    }
   }
 };
 
@@ -57,5 +95,7 @@ export const spamService = {
     }
   }
 };
+
+
 
 export default api;
