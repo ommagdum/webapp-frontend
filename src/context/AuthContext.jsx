@@ -26,6 +26,24 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const googleLogin = async (credential) => {
+    try {
+      const response = await authService.googleLogin(credential);
+      console.log('Google Auth response:', response);
+      
+      if (response.data && response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        setIsLoggedIn(true);
+        return response;
+      } else {
+        throw new Error('No token received from Google Auth');
+      }
+    } catch (error) {
+      console.error('Google login error in context:', error);
+      throw error;
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setIsLoggedIn(false);
@@ -57,7 +75,7 @@ const register = async (email, password) => {
 
   const verifyEmail = async (token) => {
     try {
-      const response = await axios.get(`/api/auth/verify?token=${token}`);
+      const response = await authService.verifyEmail(token);
       return response.data;
     } catch (error) {
       throw error;
@@ -65,9 +83,17 @@ const register = async (email, password) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, login, logout, register, isVerificationSent,
-      verificationToken, setIsVerificationSent, verifyEmail
-     }}>
+    <AuthContext.Provider value={{ 
+      isLoggedIn, 
+      login, 
+      googleLogin,
+      logout, 
+      register, 
+      isVerificationSent,
+      verificationToken, 
+      setIsVerificationSent, 
+      verifyEmail
+    }}>
       {children}
     </AuthContext.Provider>
   );

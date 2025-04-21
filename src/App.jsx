@@ -6,6 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import SpamCheck from './components/SpamCheck';
 import LandingPage from './components/LandingPage';
 import EmailVerification from './components/EmailVerification';
+import OAuthRedirect from './components/Auth/OAuthRedirect';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/verify" element={<EmailVerification />} />
+          <Route path="/oauth2/redirect" element={<OAuthRedirect />} />
           <Route 
             path="/dashboard" 
             element={

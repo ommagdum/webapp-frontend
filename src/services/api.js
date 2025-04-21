@@ -45,6 +45,17 @@ export const authService = {
     }
   },
 
+  googleLogin: async (credential) => {
+    try {
+      const response = await api.post('/api/auth/google-auth', { credential });
+      console.log('Google login response:', response);
+      return response;
+    } catch (error) {
+      console.error('Google auth error:', error);
+      throw error;
+    }
+  },
+
   register: async (userData) => {
     try {
       const response = await api.post('/api/auth/register', userData);
