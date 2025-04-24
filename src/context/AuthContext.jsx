@@ -1,26 +1,147 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { authService } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
-const AuthContext = createContext(null);
+const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
+export function AuthProvider({ children }) {
+  const navigate = useNavigate();
+  
+  // Define decodeToken FIRST to avoid initialization issues
+  const decodeToken = (token) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const decoded = JSON.parse(atob(base64));
+      return {
+        id: decoded.sub,
+        email: decoded.email,
+        roles: decoded.roles,
+        exp: decoded.exp
+      };
+    } catch (error) {
+      console.error('Token decoding failed:', error);
+      return null;
+    }
+  };
 
-  const login = (token) => {
-    localStorage.setItem('token', token);
-    setIsLoggedIn(true);
+  // Now safely use decodeToken in initial state
+  const [user, setUser] = useState(() => {
+    const token = localStorage.getItem('jwt');
+    return token ? decodeToken(token) : null;
+  });
+  
+  // Add state for verification tracking
+  const [isVerificationSent, setIsVerificationSent] = useState(false);
+  const [verificationToken, setVerificationToken] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('jwt');
+    if (token && !user) {
+      try {
+        const decoded = decodeToken(token);
+        if (decoded.exp * 1000 > Date.now()) {
+          setUser(decoded);
+        } else {
+          localStorage.removeItem('jwt');
+        }
+      } catch (error) {
+        localStorage.removeItem('jwt');
+      }
+    }
+  }, [user]);
+
+  const login = async (credentials) => {
+    try {
+      if (!credentials?.email?.trim() || !credentials?.password?.trim()) {
+        throw new Error('Email and password are required');
+      }
+  
+      const normalizedCredentials = {
+        email: credentials.email.trim().toLowerCase(),
+        password: credentials.password.trim()
+      };
+  
+      const response = await authService.login(normalizedCredentials);
+      
+      // Check if response contains token directly or nested in data property
+      const token = response.token || response.data?.token;
+      
+      if (!token) {
+        console.error('Authentication failed: Token not found in response', response);
+        throw new Error('Authentication failed: Invalid server response');
+      }
+      
+      // Save token to localStorage
+      localStorage.setItem('jwt', token);
+      
+      // Decode token and set user state
+      const decodedUser = decodeToken(token);
+      setUser(decodedUser);
+      
+      return decodedUser;
+  
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error.response?.data?.message || error.message;
+    }
+  };
+  
+  // Add register function
+  const register = async (formData) => {
+    try {
+      if (!formData?.email?.trim() || !formData?.password?.trim()) {
+        throw new Error('Email and password are required');
+      }
+      
+      const normalizedEmail = formData.email.trim().toLowerCase();
+      
+      // Keep it simple - just email and password
+      const registrationData = {
+        email: normalizedEmail,
+        password: formData.password
+      };
+      
+      console.log('Sending registration data:', registrationData);
+      
+      const response = await authService.register(registrationData);
+      
+      // For development purposes, store verification token if provided
+      if (response.verificationToken) {
+        setVerificationToken(response.verificationToken);
+      }
+      
+      setIsVerificationSent(true);
+      return response;
+      
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    setIsLoggedIn(false);
+    localStorage.removeItem('jwt');
+    setUser(null);
+    navigate('/login');
   };
 
+  const value = useMemo(() => ({
+    user,
+    login,
+    logout,
+    register,
+    isVerificationSent,
+    verificationToken,
+    isLoggedIn: !!user
+  }), [user, isVerificationSent, verificationToken]);
+
   return (
-    <AuthContext.Provider value={{ isLoggedIn, login, logout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -29,5 +150,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-export default AuthContext;

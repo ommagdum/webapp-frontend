@@ -1,28 +1,48 @@
-import { AuthProvider } from './context/AuthContext';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import Login from './components/Auth/Login';
+import Register from './components/Auth/Register';
 import ProtectedRoute from './components/ProtectedRoute';
-import SpamCheck from './components/SpamCheck';
+import LandingPage from './components/LandingPage';
+import EmailVerification from './components/EmailVerification';
+import OAuthRedirect from './components/Auth/OAuthRedirect';
+import AuthenticatedLayout from './components/AuthenticatedLayout';
+import HomePage from './components/HomePage';
+import Dashboard from './components/Dashboard';
 
 function App() {
-  console.log('App rendering'); // Debug log
-
   return (
-    <AuthProvider>
-      <Router>
+    <Router>
+      <AuthProvider>
         <Routes>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/verify" element={<EmailVerification />} />
+          <Route path="/oauth2/redirect" element={<OAuthRedirect />} />
           <Route 
-            path="/" 
+            path="/home"
             element={
               <ProtectedRoute>
-                <SpamCheck />
+                <AuthenticatedLayout>
+                  <HomePage />
+                </AuthenticatedLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <AuthenticatedLayout>
+                  <Dashboard />
+                </AuthenticatedLayout>
               </ProtectedRoute>
             } 
           />
         </Routes>
-      </Router>
-    </AuthProvider>
+      </AuthProvider>
+    </Router>
   );
 }
 
