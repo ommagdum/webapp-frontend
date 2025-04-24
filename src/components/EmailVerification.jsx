@@ -7,7 +7,6 @@ const EmailVerification = () => {
   const [status, setStatus] = useState('verifying');
   const [message, setMessage] = useState('Verifying your email...');
   const location = useLocation();
-  const navigate = useNavigate();
   const { verifyEmail } = useAuth();
 
   useEffect(() => {
@@ -25,12 +24,12 @@ const EmailVerification = () => {
         await verifyEmail(token);
         setStatus('success');
         setMessage('Email verified successfully! You can now log in.')
-      } catch (error) {
+      } catch (_error) {
         setStatus('error');
         setMessage('An error occurred during verification. Please try again later.');
       }
-    };
 
+    };
     verifyUserEmail();
   }, [location.search, verifyEmail]);
 
@@ -85,5 +84,4 @@ const EmailVerification = () => {
     </div>
   );
 };
-
 export default EmailVerification;

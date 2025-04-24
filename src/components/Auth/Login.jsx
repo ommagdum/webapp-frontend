@@ -14,10 +14,15 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-
+  
     try {
-      await login(email, password);
-      navigate('/dashboard');
+      // Pass as object with email/password fields
+      await login({ 
+        email: email.trim(),
+        password: password.trim()
+      });
+      navigate('/home');
+    
     } catch (err) {
       // Check if the error is due to unverified email
       if (err.response?.status === 401 && 
