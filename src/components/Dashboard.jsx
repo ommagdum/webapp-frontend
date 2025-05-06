@@ -3,6 +3,10 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearSca
 import { Pie, Line } from 'react-chartjs-2';
 import { predictionService, statsService } from '../services/api';
 import { useLocation } from 'react-router-dom';
+import toast from 'react-hot-toast'; // Import toast
+import { useRef } from 'react';
+import { Zoom } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Register ChartJS components
 ChartJS.register(
@@ -64,6 +68,12 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all'); // 'all', 'spam', 'ham'
 
+  // New state for feedback submission
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+
+  // New state for comment
+  const lastSubmission = useRef(0);
+
   // Separate fetchHistory function to be called from multiple places
   const fetchHistory = useCallback(async () => {
     try {
@@ -119,7 +129,7 @@ const Dashboard = () => {
         fetchHistory();
       }
       fetchStats();
-    }, 5000); // Refresh every 5 seconds
+    }, 30000); // Refresh every 30 seconds
     
     // Clean up interval on component unmount
     return () => clearInterval(refreshInterval);
@@ -294,12 +304,13 @@ const Dashboard = () => {
               <th className="px-4 py-3 text-left text-sm font-semibold">Confidence</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">Date</th>
               <th className="px-4 py-3 text-left text-sm font-semibold">Actions</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold">Feedback</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {filteredHistory.length === 0 ? (
               <tr>
-                <td colSpan="5" className="text-center py-8 text-gray-500">
+                <td colSpan="6" className="text-center py-8 text-gray-500">
                   {loading ? 'Loading...' : 'No prediction history found'}
                 </td>
               </tr>
@@ -370,6 +381,39 @@ const Dashboard = () => {
                       View Details
                     </button>
                   </td>
+                  <td className="px-4 py-3 text-sm">
+                    <select
+                        className="border rounded px-2 py-1 mr-2"
+                        value={feedbackStates[item.id]?.correctedLabel || ''}
+                        onChange={(e) => 
+                          setFeedbackStates(prev => ({
+                            ...prev,
+                            [item.id]: {
+                              ...prev[item.id],
+                              correctedLabel: e.target.value // Store direct value
+                            }
+                          }))
+                        }
+                        disabled={feedbackStates[item.id]?.submitting}
+                      >
+                        <option value="">Correct label...</option>
+                        <option value="spam">Mark as Spam</option>
+                        <option value="ham">Mark as Ham</option>
+                      </select>
+                      <button
+                          className="bg-purple-600 text-white px-3 py-1 rounded disabled:opacity-50"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleFeedbackSubmit(item.id, feedbackStates[item.id]?.correctedLabel);
+                          }}
+                          disabled={
+                            !feedbackStates[item.id]?.correctedLabel || // Added validation
+                            feedbackStates[item.id]?.submitting
+                          }
+                        >
+                          {feedbackStates[item.id]?.submitting ? 'Submitting...' : 'Submit'}
+                        </button>
+                  </td>
                 </tr>
               );
             })}
@@ -403,6 +447,78 @@ const Dashboard = () => {
       )}
     </div>
   );
+
+  // Update state to track feedback per item
+  const [feedbackStates, setFeedbackStates] = useState({});
+
+  // Feedback submission handler
+  const handleFeedbackSubmit = async (predictionId, correctedLabel) => {
+
+    // // Validate prediction ID format
+    //   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item.id)) {
+    //     toast.error('Invalid prediction ID format');
+    //     return;
+    //   }
+
+      // Validate label selection
+      if (!correctedLabel) {
+        toast.error('Please select a corrected label');
+        return;
+      }
+
+      // Existing rate limiting check
+      if (Date.now() - lastSubmission.current < 5000) {
+        toast.error('Please wait 5 seconds between submissions');
+        return;
+      }
+      lastSubmission.current = Date.now();
+
+    console.log('Submitting feedback for:', predictionId);
+    console.log('JWT Token:', localStorage.getItem('jwt'));
+  
+    try {
+      setFeedbackStates(prev => ({
+        ...prev,
+        [predictionId]: { submitting: true, error: null }
+      }));
+  
+      const result = await predictionService.submitFeedback(
+        predictionId,
+        correctedLabel // Direct value
+      );
+  
+      if (result.success) {
+        toast.success('✅ Feedback submitted successfully!', {
+          position: "top-center",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "colored",
+          transition: Zoom
+        });
+        await fetchHistory();
+      } else {
+        toast.error(result.error || 'Failed to submit feedback');
+      }
+
+      console.log('Request payload:', {
+        prediction_id: predictionId,
+        corrected_label: correctedLabel
+      });
+    } catch (err) {
+      console.error('Full error object:', err);
+      console.error('Submission error:', err.toJSON());
+      toast.error('An unexpected error occurred');
+    } finally {
+      setFeedbackStates(prev => ({
+        ...prev,
+        [predictionId]: { ...prev[predictionId], submitting: false }
+      }));
+    }
+  };
 
   // Detail Modal
   const renderDetailModal = () => {

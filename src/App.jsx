@@ -9,6 +9,7 @@ import OAuthRedirect from './components/Auth/OAuthRedirect';
 import AuthenticatedLayout from './components/AuthenticatedLayout';
 import HomePage from './components/HomePage';
 import Dashboard from './components/Dashboard';
+import UserManagement from './components/admin/UserManagement';
 
 function App() {
   return (
@@ -39,6 +40,16 @@ function App() {
                 </AuthenticatedLayout>
               </ProtectedRoute>
             } 
+          />
+          <Route 
+            path="/admin/users"
+            element={
+              <ProtectedRoute adminOnly>
+                <AuthenticatedLayout>
+                  <UserManagement />
+                </AuthenticatedLayout>
+              </ProtectedRoute>
+            }
           />
         </Routes>
       </AuthProvider>

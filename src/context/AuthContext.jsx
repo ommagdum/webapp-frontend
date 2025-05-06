@@ -14,9 +14,11 @@ export function AuthProvider({ children }) {
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
       const decoded = JSON.parse(atob(base64));
       return {
+        roles: decoded.roles ? 
+        (Array.isArray(decoded.roles) ? decoded.roles : [decoded.roles]) 
+        : [],
         id: decoded.sub,
         email: decoded.email,
-        roles: decoded.roles,
         exp: decoded.exp
       };
     } catch (error) {
@@ -40,16 +42,19 @@ export function AuthProvider({ children }) {
     if (token && !user) {
       try {
         const decoded = decodeToken(token);
-        if (decoded.exp * 1000 > Date.now()) {
-          setUser(decoded);
-        } else {
+          if (decoded.exp * 1000 > Date.now()) {
+            setUser({
+              ...decoded,
+              roles: Array.isArray(decoded.roles) ? decoded.roles : [decoded.roles]
+            });
+          } else {
+            localStorage.removeItem('jwt');
+          }
+        } catch (error) {
           localStorage.removeItem('jwt');
         }
-      } catch (error) {
-        localStorage.removeItem('jwt');
       }
-    }
-  }, [user]);
+    }, [user]);
 
   const login = async (credentials) => {
     try {
@@ -77,6 +82,7 @@ export function AuthProvider({ children }) {
       
       // Decode token and set user state
       const decodedUser = decodeToken(token);
+      console.log('Login roles:', decodedUser.roles); // Debug logging
       setUser(decodedUser);
       
       return decodedUser;

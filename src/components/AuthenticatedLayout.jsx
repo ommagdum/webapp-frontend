@@ -1,10 +1,11 @@
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const AuthenticatedLayout = ({ children }) => {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   
   // Check current path to determine active link
   const isHomePage = location.pathname === '/home';
@@ -42,6 +43,23 @@ const AuthenticatedLayout = ({ children }) => {
             </svg>
             <span>Dashboard</span>
           </Link>
+          {user?.roles.includes('ADMIN') && (
+            <>
+              <NavLink
+                to="/admin/users"
+                className={({ isActive }) => `flex items-center space-x-1 px-4 py-2 rounded-lg ${
+                  isActive ? 'bg-purple-600 text-white' : 'text-gray-700 hover:text-purple-600'
+                }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                </svg>
+                <span>Users</span>
+              </NavLink>
+              
+            </>
+          )}
+          
         </div>
         
         {/* Right side - User Actions */}

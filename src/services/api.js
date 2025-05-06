@@ -26,13 +26,18 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        const refreshResponse = await authService.refreshToken();
-        // Handle different token response structures
-        const newToken = refreshResponse.accessToken || 
-                         refreshResponse.token || 
-                         refreshResponse.data?.accessToken || 
-                         refreshResponse.data?.token;
-        
+        // const refreshResponse = await authService.refreshToken();
+        // // Handle different token response structures
+        // const newToken = refreshResponse.accessToken || 
+        //                  refreshResponse.token || 
+        //                  refreshResponse.data?.accessToken || 
+        //                  refreshResponse.data?.token;
+        const { data } = await axios.post(
+          `${api.baseURL}/api/auth/refresh-token`, 
+          {},
+          { withCredentials: true }
+        );
+        const newToken = data.accessToken;
         if (!newToken) {
           throw new Error('Token refresh failed: No token in response');
         }
@@ -79,7 +84,7 @@ const authService = {
   },
   refreshToken: async () => {
     try {
-      const response = await api.post('/api/auth/refresh');
+      const response = await api.post('/api/auth/refresh-token', {}, { withCredentials: true });
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Session refresh failed');
@@ -142,7 +147,35 @@ const predictionService = {
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to load history');
     }
+  },
+  
+  submitFeedback: async (predictionId, correctedLabel) => {
+  try {
+    // Convert to backend's expected snake_case format
+    const payload = {
+      prediction_id: Number(predictionId),
+      corrected_label: correctedLabel.toLowerCase().trim()
+    };
+
+    const response = await api.post('/api/feedback/correct-prediction', payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('jwt')}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Validation Failure:', error.response?.data);
+    throw error;
   }
+}
+};
+
+// Admin endpoints
+const admin = {
+  getModelVersions: () => api.get('/model/versions'),
+  triggerRetraining: () => api.post('/retrain'),
+  rollbackModel: (versionId) => api.post(`/model/rollback/${versionId}`)
 };
 
 // Stats Service
@@ -169,9 +202,11 @@ const statsService = {
 };
 
 // Export services
-export { authService, predictionService, statsService };
+export { api, authService, predictionService, statsService, admin };
 export default {
+  api,
   authService,
   predictionService,
-  statsService
+  statsService,
+  admin
 };
