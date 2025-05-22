@@ -28,6 +28,35 @@ export function AuthProvider({ children }) {
   };
 
   // Now safely use decodeToken in initial state
+  const refreshUserFromToken = () => {
+    const token = localStorage.getItem('jwt');
+    if (!token) {
+      setUser(null);
+      return null;
+    }
+
+    try {
+      const decoded = decodeToken(token);
+      if (decoded.exp * 1000 > Date.now()) {
+        const userData = {
+          ...decoded,
+          roles: Array.isArray(decoded.roles) ? decoded.roles : [decoded.roles].filter(Boolean)
+        };
+        setUser(userData);
+        return userData;
+      } else {
+        localStorage.removeItem('jwt');
+        setUser(null);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error refreshing user from token:', error);
+      localStorage.removeItem('jwt');
+      setUser(null);
+      return null;
+    }
+  };
+
   const [user, setUser] = useState(() => {
     const token = localStorage.getItem('jwt');
     return token ? decodeToken(token) : null;
@@ -37,24 +66,10 @@ export function AuthProvider({ children }) {
   const [isVerificationSent, setIsVerificationSent] = useState(false);
   const [verificationToken, setVerificationToken] = useState(null);
 
+  // Initialize user state from token on mount
   useEffect(() => {
-    const token = localStorage.getItem('jwt');
-    if (token && !user) {
-      try {
-        const decoded = decodeToken(token);
-          if (decoded.exp * 1000 > Date.now()) {
-            setUser({
-              ...decoded,
-              roles: Array.isArray(decoded.roles) ? decoded.roles : [decoded.roles]
-            });
-          } else {
-            localStorage.removeItem('jwt');
-          }
-        } catch {
-          localStorage.removeItem('jwt');
-        }
-      }
-    }, [user]);
+    refreshUserFromToken();
+  }, []);
   const login = async (credentials) => {
     try {
       if (!credentials?.email?.trim() || !credentials?.password?.trim()) {
@@ -136,6 +151,7 @@ export function AuthProvider({ children }) {
     login,
     logout,
     register,
+    refreshUserFromToken,
     isVerificationSent,
     verificationToken,
     isLoggedIn: !!user

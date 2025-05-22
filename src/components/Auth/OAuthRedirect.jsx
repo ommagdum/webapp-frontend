@@ -7,8 +7,9 @@ const OAuthRedirect = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { refreshUserFromToken } = useAuth();
 
-  useEffect(() => {
+  const handleOAuthCallback = useCallback(async () => {
     const token = searchParams.get('token');
     const error = searchParams.get('error');
 
@@ -19,16 +20,35 @@ const OAuthRedirect = () => {
       return;
     }
 
-    if (token) {
-      localStorage.setItem('jwt', token);
-      window.history.replaceState({}, document.title, window.location.pathname);
-      navigate('/dashboard');
-    } else {
-      localStorage.removeItem('jwt');
+    if (!token) {
       setError('No authentication token found');
       setLoading(false);
+      return;
     }
-  }, [searchParams, navigate]);
+
+    try {
+      // Save the token
+      localStorage.setItem('jwt', token);
+      
+      // Update the auth state
+      await refreshUserFromToken();
+      
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Navigate to dashboard
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      console.error('Error during OAuth callback:', err);
+      setError('Failed to complete authentication');
+      localStorage.removeItem('jwt');
+      setLoading(false);
+    }
+  }, [searchParams, navigate, refreshUserFromToken]);
+
+  useEffect(() => {
+    handleOAuthCallback();
+  }, [handleOAuthCallback]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
