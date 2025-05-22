@@ -6,49 +6,44 @@ const OAuthRedirect = () => {
   const [searchParams] = useSearchParams();
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-  const { refreshUserFromToken } = useAuth();
-
-  const handleOAuthCallback = useCallback(async () => {
-    const token = searchParams.get('token');
-    const error = searchParams.get('error');
-
-    if (error) {
-      localStorage.removeItem('jwt');
-      setError(error);
-      setLoading(false);
-      return;
-    }
-
-    if (!token) {
-      setError('No authentication token found');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // Save the token
-      localStorage.setItem('jwt', token);
-      
-      // Update the auth state
-      await refreshUserFromToken();
-      
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-      
-      // Navigate to dashboard
-      navigate('/dashboard', { replace: true });
-    } catch (err) {
-      console.error('Error during OAuth callback:', err);
-      setError('Failed to complete authentication');
-      localStorage.removeItem('jwt');
-      setLoading(false);
-    }
-  }, [searchParams, navigate, refreshUserFromToken]);
 
   useEffect(() => {
-    handleOAuthCallback();
-  }, [handleOAuthCallback]);
+    const processOAuthCallback = () => {
+      const token = searchParams.get('token');
+      const error = searchParams.get('error');
+
+      if (error) {
+        localStorage.removeItem('jwt');
+        setError(error);
+        setLoading(false);
+        return;
+      }
+
+      if (!token) {
+        setError('No authentication token found');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Save the token
+        localStorage.setItem('jwt', token);
+        
+        // Clean up URL before reload to avoid infinite loops
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Force a full page reload to ensure AuthContext is properly initialized
+        window.location.href = '/dashboard';
+      } catch (err) {
+        console.error('Error during OAuth callback:', err);
+        setError('Failed to complete authentication');
+        localStorage.removeItem('jwt');
+        setLoading(false);
+      }
+    };
+
+    processOAuthCallback();
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
