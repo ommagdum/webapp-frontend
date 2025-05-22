@@ -13,9 +13,11 @@ const OAuthRedirect = () => {
   useEffect(() => {
     const processOAuthCallback = async () => {
       // Prevent multiple executions
-      if (isProcessing) return;
+      if (isProcessing || !searchParams) return;
       
       setIsProcessing(true);
+      setLoading(true);
+      
       const token = searchParams.get('token');
       const error = searchParams.get('error');
 
@@ -46,13 +48,18 @@ const OAuthRedirect = () => {
         // Force a state update to trigger ProtectedRoute re-evaluation
         window.dispatchEvent(new Event('storage'));
         
-        // Use navigate with replace to avoid adding to history
-        navigate('/dashboard', { replace: true });
+        // Wait a moment to ensure state is updated
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Navigate to dashboard or previous location
+        const from = location.state?.from?.pathname || '/dashboard';
+        navigate(from, { replace: true });
         
       } catch (err) {
         console.error('Error during OAuth callback:', err);
         setError('Failed to complete authentication');
         localStorage.removeItem('jwt');
+        navigate('/login', { replace: true });
       } finally {
         setLoading(false);
         setIsProcessing(false);
@@ -60,7 +67,7 @@ const OAuthRedirect = () => {
     };
 
     processOAuthCallback();
-  }, [searchParams, navigate, isProcessing]);
+  }, [searchParams, navigate, isProcessing, location.state]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">

@@ -15,15 +15,28 @@ const ProtectedRoute = ({ children }) => {
         
         if (!token) {
           console.log('No token found, redirecting to login');
-          logout();
+          // Don't redirect if we're already on the login page
+          if (location.pathname !== '/login') {
+            navigate('/login', { 
+              replace: true,
+              state: { from: location }
+            });
+          }
           return false;
         }
         
         // If we have a token but user state isn't updated yet, try to refresh it
         if (!isLoggedIn) {
-          console.log('Token exists but user not logged in, refreshing user state');
-          await refreshUserFromToken();
-          return true;
+          console.log('Token found but user not logged in, refreshing user state');
+          const user = await refreshUserFromToken();
+          if (!user) {
+            localStorage.removeItem('jwt');
+            navigate('/login', { 
+              replace: true,
+              state: { from: location }
+            });
+            return false;
+          }
         }
         
         // Check if token is expired
