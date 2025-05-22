@@ -39,8 +39,10 @@ const Login = () => {
   // Handle Google login
   const handleGoogleLogin = () => {
     const apiUrl = import.meta.env.VITE_API_URL;
-    console.log(`Redirecting to ${apiUrl}/oauth2/authorization/google`);
-    window.location.href = `${apiUrl}/oauth2/authorization/google`;
+    // Add prompt=select_account to force account selection
+    const googleAuthUrl = `${apiUrl}/oauth2/authorization/google?prompt=select_account`;
+    console.log('Redirecting to Google OAuth:', googleAuthUrl);
+    window.location.href = googleAuthUrl;
   };
 
   return (
