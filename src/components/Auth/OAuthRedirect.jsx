@@ -1,62 +1,66 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import LoadingSpinner from '../LoadingSpinner';
 
 const OAuthRedirect = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
-    // Check if we've already processed the redirect
-    const hasProcessed = sessionStorage.getItem('oauthProcessed');
-    if (hasProcessed === 'true') {
-      // If we've already processed, clean up and don't process again
-      sessionStorage.removeItem('oauthProcessed');
-      return;
-    }
-
-    const processOAuthCallback = () => {
+    const processOAuthCallback = async () => {
+      // Prevent multiple executions
+      if (isProcessing) return;
+      
+      setIsProcessing(true);
       const token = searchParams.get('token');
       const error = searchParams.get('error');
 
       if (error) {
-        localStorage.removeItem('jwt');
+        console.error('OAuth Error:', error);
         setError(error);
         setLoading(false);
+        setIsProcessing(false);
         return;
       }
 
       if (!token) {
+        console.error('No token found in URL');
         setError('No authentication token found');
         setLoading(false);
+        setIsProcessing(false);
         return;
       }
 
       try {
-        // Mark that we're processing this OAuth flow
-        sessionStorage.setItem('oauthProcessed', 'true');
-        
-        // Save the token
+        // Store the token
         localStorage.setItem('jwt', token);
         
-        // Clean up URL before reload to avoid infinite loops
+        // Clear the URL parameters to prevent re-processing
         const cleanUrl = window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);
         
-        // Use replace instead of href to prevent adding to history
-        window.location.replace('/dashboard');
+        // Force a state update to trigger ProtectedRoute re-evaluation
+        window.dispatchEvent(new Event('storage'));
+        
+        // Use navigate with replace to avoid adding to history
+        navigate('/dashboard', { replace: true });
+        
       } catch (err) {
         console.error('Error during OAuth callback:', err);
         setError('Failed to complete authentication');
         localStorage.removeItem('jwt');
+      } finally {
         setLoading(false);
-        sessionStorage.removeItem('oauthProcessed');
+        setIsProcessing(false);
       }
     };
 
     processOAuthCallback();
-  }, [searchParams]);
+  }, [searchParams, navigate, isProcessing]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
