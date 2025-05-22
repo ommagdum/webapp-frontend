@@ -8,6 +8,14 @@ const OAuthRedirect = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check if we've already processed the redirect
+    const hasProcessed = sessionStorage.getItem('oauthProcessed');
+    if (hasProcessed === 'true') {
+      // If we've already processed, clean up and don't process again
+      sessionStorage.removeItem('oauthProcessed');
+      return;
+    }
+
     const processOAuthCallback = () => {
       const token = searchParams.get('token');
       const error = searchParams.get('error');
@@ -26,19 +34,24 @@ const OAuthRedirect = () => {
       }
 
       try {
+        // Mark that we're processing this OAuth flow
+        sessionStorage.setItem('oauthProcessed', 'true');
+        
         // Save the token
         localStorage.setItem('jwt', token);
         
         // Clean up URL before reload to avoid infinite loops
-        window.history.replaceState({}, document.title, window.location.pathname);
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
         
-        // Force a full page reload to ensure AuthContext is properly initialized
-        window.location.href = '/dashboard';
+        // Use replace instead of href to prevent adding to history
+        window.location.replace('/dashboard');
       } catch (err) {
         console.error('Error during OAuth callback:', err);
         setError('Failed to complete authentication');
         localStorage.removeItem('jwt');
         setLoading(false);
+        sessionStorage.removeItem('oauthProcessed');
       }
     };
 
