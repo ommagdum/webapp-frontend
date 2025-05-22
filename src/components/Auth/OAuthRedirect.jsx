@@ -8,53 +8,50 @@ const OAuthRedirect = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const processOAuthCallback = async () => {
+    // Check if we've already processed the redirect
+    const hasProcessed = sessionStorage.getItem('oauthProcessed');
+    if (hasProcessed === 'true') {
+      // If we've already processed, clean up and don't process again
+      sessionStorage.removeItem('oauthProcessed');
+      return;
+    }
+
+    const processOAuthCallback = () => {
       const token = searchParams.get('token');
       const error = searchParams.get('error');
-      const state = searchParams.get('state');
-      const storedState = sessionStorage.getItem('oauthState');
-
-      // Clean up the URL first to prevent re-processing
-      window.history.replaceState({}, document.title, window.location.pathname);
 
       if (error) {
-        console.error('OAuth error:', error);
-        setError(error === 'access_denied' ? 'Login was cancelled' : 'Authentication failed');
+        localStorage.removeItem('jwt');
+        setError(error);
         setLoading(false);
         return;
       }
 
       if (!token) {
-        console.error('No token found in OAuth response');
-        setError('No authentication token received');
-        setLoading(false);
-        return;
-      }
-
-      // Verify state to prevent CSRF
-      if (state !== storedState) {
-        console.error('Invalid state parameter');
-        setError('Invalid authentication state');
+        setError('No authentication token found');
         setLoading(false);
         return;
       }
 
       try {
+        // Mark that we're processing this OAuth flow
+        sessionStorage.setItem('oauthProcessed', 'true');
+        
         // Save the token
         localStorage.setItem('jwt', token);
         
-        // Clear the OAuth state
-        sessionStorage.removeItem('oauthState');
+        // Clean up URL before reload to avoid infinite loops
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
         
-        // Force a full page reload to ensure all context is properly initialized
-        window.location.href = '/dashboard';
-        
+        // Use replace instead of href to prevent adding to history
+        window.location.replace('/dashboard');
       } catch (err) {
         console.error('Error during OAuth callback:', err);
         setError('Failed to complete authentication');
         localStorage.removeItem('jwt');
-        sessionStorage.removeItem('oauthState');
         setLoading(false);
+        sessionStorage.removeItem('oauthProcessed');
       }
     };
 

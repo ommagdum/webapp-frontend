@@ -39,21 +39,8 @@ const Login = () => {
   // Handle Google login
   const handleGoogleLogin = () => {
     const apiUrl = import.meta.env.VITE_API_URL;
-    // Add prompt=select_account to force account selection
-    // Add a random state parameter to prevent caching
-    const randomState = Math.random().toString(36).substring(2, 15);
-    const googleAuthUrl = `${apiUrl}/oauth2/authorization/google?prompt=select_account&state=${randomState}`;
-    
-    console.log('Redirecting to Google OAuth with forced account selection');
-    // Clear any existing tokens to ensure fresh login
-    localStorage.removeItem('jwt');
-    sessionStorage.removeItem('oauthProcessed');
-    
-    // Store the intended destination
-    sessionStorage.setItem('oauthState', randomState);
-    
-    // Redirect to Google OAuth
-    window.location.href = googleAuthUrl;
+    console.log(`Redirecting to ${apiUrl}/oauth2/authorization/google`);
+    window.location.href = `${apiUrl}/oauth2/authorization/google`;
   };
 
   return (
