@@ -127,11 +127,11 @@ const LandingPage = () => {
               <p className='text-gray-600'>Accuracy</p>
             </div>
             <div>
-              <p className='text-4xl font-bold text-purple-600 mb-2'>26/7</p>
-              <p className='text-gray-600'>Real-tine Protection</p>
+              <p className='text-4xl font-bold text-purple-600 mb-2'>24/7</p>
+              <p className='text-gray-600'>Real-time Protection</p>
             </div>
             <div>
-              <p className='text-4xl font-bold text-purple-600 mb-2'>50+</p>
+              <p className='text-4xl font-bold text-purple-600 mb-2'>50M+</p>
               <p className='text-gray-600'>Emails Analysed</p>
             </div>
           </div>
