@@ -45,15 +45,13 @@ api.interceptors.response.use(
         localStorage.setItem('jwt', newToken);
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);
-      } catch (refreshError) {
+      } catch {
         localStorage.removeItem('jwt');
         window.location.href = '/login';
       }
     }
     return Promise.reject(error);
-  }
-);
-
+  });
 // Auth Service
 const authService = {
   login: async (credentials) => {

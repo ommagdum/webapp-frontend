@@ -50,12 +50,11 @@ export function AuthProvider({ children }) {
           } else {
             localStorage.removeItem('jwt');
           }
-        } catch (error) {
+        } catch {
           localStorage.removeItem('jwt');
         }
       }
     }, [user]);
-
   const login = async (credentials) => {
     try {
       if (!credentials?.email?.trim() || !credentials?.password?.trim()) {

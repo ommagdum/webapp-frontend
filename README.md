@@ -1,12 +1,51 @@
-# React + Vite
+# 🔐 MLBSED Webapp Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern authentication and admin management system with React-based dashboard features.
 
-Currently, two official plugins are available:
+## 🚀 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **🔑 JWT Authentication**  
+  Secure user sessions with token-based authentication
+- **👥 Role-Based Access Control**  
+  Admin/User permissions system with protected routes
+- **📊 Real-Time System Monitoring**  
+  Live stats dashboard with usage metrics
+- **👮 User Management**  
+  Admin panel for granular user control (v2 feature)
+- **📈 Prediction History**  
+  Track spam detection analysis over time
 
-## Expanding the ESLint configuration
+## ⚙️ Installation
 
-If you are developing a production application, we recommend using TypeScript and enable type-aware lint rules. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+git clone https://github.com/ommagdum/webapp-frontend.git
+cd webapp-frontend
+npm install
+```
+
+## 🔧 Configuration
+
+1. Create `.env` file:
+```bash
+cp .env.example .env
+```
+2. Set your API endpoints:
+```ini
+VITE_API_URL=http://localhost:8080/api
+VITE_ADMIN_FEATURES=true # Enable admin panel
+```
+
+## 🖥️ Running the App
+```bash
+npm run dev
+```
+
+## 🤝 Contributing
+```bash
+git checkout -b feature/your-feature
+# Make changes then
+git push origin feature/your-feature
+```
+
+## 📄 License
+MIT © 2025 Om Magdum
