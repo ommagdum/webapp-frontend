@@ -160,6 +160,24 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const refreshUserFromToken = useCallback(() => {
+    const token = localStorage.getItem('jwt');
+    if (!token) {
+      setUser(null);
+      return null;
+    }
+
+    const decodedUser = decodeToken(token);
+    if (decodedUser?.exp * 1000 > Date.now()) {
+      setUser(decodedUser);
+      return decodedUser;
+    } else {
+      localStorage.removeItem('jwt');
+      setUser(null);
+      return null;
+    }
+  }, []);
+
   const logout = () => {
     localStorage.removeItem('jwt');
     setUser(null);
