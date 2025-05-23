@@ -44,6 +44,9 @@ const OAuthRedirect = () => {
       setLoading(true);
       
       try {
+        console.log('Processing OAuth callback...');
+        console.log('Search params:', Object.fromEntries(searchParams.entries()));
+        
         const token = searchParams.get('token');
         const error = searchParams.get('error');
     
@@ -51,14 +54,17 @@ const OAuthRedirect = () => {
         window.history.replaceState({}, '', window.location.pathname);
     
         if (error) {
-          setError(error);
+          console.error('OAuth error:', error);
           throw new Error(`OAuth error: ${error}`);
         }
     
         if (!token) {
+          console.error('No token received from OAuth provider');
           throw new Error('No token received from OAuth provider');
         }
     
+        console.log('Token received, storing and decoding...');
+        
         // Store the token
         localStorage.setItem('jwt', token);
         
@@ -66,24 +72,32 @@ const OAuthRedirect = () => {
         const decodedUser = decodeToken(token);
         
         if (!decodedUser) {
+          console.error('Failed to decode token');
           throw new Error('Failed to decode authentication token');
         }
         
-        // Update auth state immediately
+        console.log('Decoded user:', decodedUser);
+        
+        // Update auth state
         window.dispatchEvent(new CustomEvent('authstatechange', { 
           detail: decodedUser 
         }));
         
-        // Store user data in localStorage for initial page load before context is ready
+        // Store user data in localStorage
         localStorage.setItem('user', JSON.stringify(decodedUser));
+        
+        // Update the user in the auth context
+        setUser(decodedUser);
         
         // Navigate to the intended destination or dashboard
         const redirectTo = location.state?.from?.pathname || '/dashboard';
+        console.log('Redirecting to:', redirectTo);
+        
         navigate(redirectTo, { 
           replace: true,
           state: { 
             from: location,
-            message: 'Successfully logged in!',
+            message: 'Successfully logged in with Google!',
             skipAuthCheck: true  // Skip auth check for this navigation
           }
         });
