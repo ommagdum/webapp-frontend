@@ -10,6 +10,31 @@ const OAuthRedirect = () => {
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Function to decode JWT token
+  const decodeToken = (token) => {
+    try {
+      if (!token || typeof token !== 'string') return null;
+      
+      const base64Url = token.split('.')[1];
+      if (!base64Url) return null;
+      
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const decoded = JSON.parse(atob(base64));
+      
+      if (!decoded || !decoded.exp) return null;
+      
+      return {
+        roles: decoded.roles ? (Array.isArray(decoded.roles) ? decoded.roles : [decoded.roles]) : [],
+        id: decoded.sub,
+        email: decoded.email,
+        exp: decoded.exp
+      };
+    } catch (error) {
+      console.error('Token decoding failed:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     const processOAuthCallback = async () => {
       if (isProcessing || !searchParams) return;
@@ -17,34 +42,67 @@ const OAuthRedirect = () => {
       setIsProcessing(true);
       setLoading(true);
       
-      const token = searchParams.get('token');
-      const error = searchParams.get('error');
-  
-      // Clear URL parameters IMMEDIATELY to prevent reprocessing
-      window.history.replaceState({}, '', window.location.pathname);
-  
-      if (error) {
-        // Handle error
-        return;
-      }
-  
-      if (token) {
-        try {
-          localStorage.setItem('jwt', token);
-          
-          // Force update auth state
-          window.dispatchEvent(new Event('storage'));
-          
-          // Navigate to dashboard
-          navigate(location.state?.from?.pathname || '/dashboard', { replace: true });
-        } catch (err) {
-          // Handle error
+      try {
+        const token = searchParams.get('token');
+        const error = searchParams.get('error');
+    
+        // Clear URL parameters IMMEDIATELY to prevent reprocessing
+        window.history.replaceState({}, '', window.location.pathname);
+    
+        if (error) {
+          setError(error);
+          throw new Error(`OAuth error: ${error}`);
         }
+    
+        if (!token) {
+          throw new Error('No token received from OAuth provider');
+        }
+    
+        // Store the token
+        localStorage.setItem('jwt', token);
+        
+        // Decode the token to get user data
+        const decodedUser = decodeToken(token);
+        
+        if (!decodedUser) {
+          throw new Error('Failed to decode authentication token');
+        }
+        
+        // Update auth state immediately
+        window.dispatchEvent(new CustomEvent('authstatechange', { 
+          detail: decodedUser 
+        }));
+        
+        // Store user data in localStorage for initial page load before context is ready
+        localStorage.setItem('user', JSON.stringify(decodedUser));
+        
+        // Navigate to the intended destination or dashboard
+        const redirectTo = location.state?.from?.pathname || '/dashboard';
+        navigate(redirectTo, { 
+          replace: true,
+          state: { 
+            from: location,
+            message: 'Successfully logged in!'
+          }
+        });
+      } catch (err) {
+        console.error('OAuth processing error:', err);
+        setError(err.message || 'Failed to process authentication. Please try again.');
+        // Redirect to login with error state
+        navigate('/login', { 
+          replace: true,
+          state: { 
+            error: error || 'Authentication failed. Please try again.'
+          }
+        });
+      } finally {
+        setLoading(false);
+        setIsProcessing(false);
       }
     };
   
     processOAuthCallback();
-  }, [searchParams, navigate, isProcessing]);
+  }, [searchParams, navigate, isProcessing, location]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">

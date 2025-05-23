@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { authService } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -7,16 +7,21 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const navigate = useNavigate();
   
-  // Define decodeToken FIRST to avoid initialization issues
-  const decodeToken = (token) => {
+  // Token decoding function with validation
+  const decodeToken = useCallback((token) => {
+    if (!token || typeof token !== 'string') return null;
+    
     try {
       const base64Url = token.split('.')[1];
+      if (!base64Url) return null;
+      
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
       const decoded = JSON.parse(atob(base64));
+      
+      if (!decoded || !decoded.exp) return null;
+      
       return {
-        roles: decoded.roles ? 
-        (Array.isArray(decoded.roles) ? decoded.roles : [decoded.roles]) 
-        : [],
+        roles: decoded.roles ? (Array.isArray(decoded.roles) ? decoded.roles : [decoded.roles]) : [],
         id: decoded.sub,
         email: decoded.email,
         exp: decoded.exp
@@ -25,50 +30,55 @@ export function AuthProvider({ children }) {
       console.error('Token decoding failed:', error);
       return null;
     }
-  };
+  }, []);
 
-  // Now safely use decodeToken in initial state
-  const refreshUserFromToken = () => {
-    const token = localStorage.getItem('jwt');
-    if (!token) {
-      setUser(null);
-      return null;
-    }
-
-    try {
-      const decoded = decodeToken(token);
-      if (decoded.exp * 1000 > Date.now()) {
-        const userData = {
-          ...decoded,
-          roles: Array.isArray(decoded.roles) ? decoded.roles : [decoded.roles].filter(Boolean)
-        };
-        setUser(userData);
-        return userData;
-      } else {
-        localStorage.removeItem('jwt');
-        setUser(null);
-        return null;
-      }
-    } catch (error) {
-      console.error('Error refreshing user from token:', error);
-      localStorage.removeItem('jwt');
-      setUser(null);
-      return null;
-    }
-  };
-
-  const [user, setUser] = useState(() => {
-    const token = localStorage.getItem('jwt');
-    return token ? decodeToken(token) : null;
-  });
-  
-  // Add state for verification tracking
+  // State for user and verification
+  const [user, setUser] = useState(null);
   const [isVerificationSent, setIsVerificationSent] = useState(false);
   const [verificationToken, setVerificationToken] = useState(null);
 
-  // Initialize user state from token on mount
+  // Check if user is logged in
+  const isLoggedIn = useMemo(() => {
+    return !!user && user.exp * 1000 > Date.now();
+  }, [user]);
+
+  // Initialize auth state on mount
   useEffect(() => {
-    refreshUserFromToken();
+    const token = localStorage.getItem('jwt');
+    if (token) {
+      const decoded = decodeToken(token);
+      if (decoded?.exp * 1000 > Date.now()) {
+        setUser(decoded);
+      } else {
+        localStorage.removeItem('jwt');
+      }
+    }
+
+    // Listen for auth state changes from other tabs/windows
+    const handleStorageChange = () => {
+      const token = localStorage.getItem('jwt');
+      if (!token) {
+        setUser(null);
+      } else if (!user || token !== localStorage.getItem('jwt')) {
+        const decoded = decodeToken(token);
+        setUser(decoded);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [decodeToken, user]);
+
+  // Listen for auth state change events
+  useEffect(() => {
+    const handleAuthStateChange = (e) => {
+      if (e.detail) {
+        setUser(e.detail);
+      }
+    };
+
+    window.addEventListener('authstatechange', handleAuthStateChange);
+    return () => window.removeEventListener('authstatechange', handleAuthStateChange);
   }, []);
   const login = async (credentials) => {
     try {
@@ -91,23 +101,27 @@ export function AuthProvider({ children }) {
         throw new Error('Authentication failed: Invalid server response');
       }
       
-      // Save token to localStorage
+      // Save token to localStorage and update state
       localStorage.setItem('jwt', token);
-      
-      // Decode token and set user state
       const decodedUser = decodeToken(token);
-      console.log('Login roles:', decodedUser.roles); // Debug logging
-      setUser(decodedUser);
       
-      return decodedUser;
-  
+      if (!decodedUser) {
+        throw new Error('Failed to decode authentication token');
+      }
+      
+      // Update state and notify other components
+      setUser(decodedUser);
+      window.dispatchEvent(new CustomEvent('authstatechange', { detail: decodedUser }));
+      
+      return response;
+      
     } catch (error) {
       console.error('Login error:', error);
       throw error.response?.data?.message || error.message;
     }
   };
   
-  // Add register function
+  // Register function
   const register = async (formData) => {
     try {
       if (!formData?.email?.trim() || !formData?.password?.trim()) {
@@ -115,34 +129,42 @@ export function AuthProvider({ children }) {
       }
       
       const normalizedEmail = formData.email.trim().toLowerCase();
-      
-      // Keep it simple - just email and password
+
       const registrationData = {
         email: normalizedEmail,
-        password: formData.password
+        password: formData.password,
+        name: formData.name || ''
       };
-      
-      console.log('Sending registration data:', registrationData);
       
       const response = await authService.register(registrationData);
       
-      // For development purposes, store verification token if provided
-      if (response.verificationToken) {
+      // Handle auto-login after registration if token is returned
+      if (response.token) {
+        localStorage.setItem('jwt', response.token);
+        const decodedUser = decodeToken(response.token);
+        if (decodedUser) {
+          setUser(decodedUser);
+          window.dispatchEvent(new CustomEvent('authstatechange', { detail: decodedUser }));
+        }
+      } else if (response.verificationToken) {
+        // Handle email verification flow
         setVerificationToken(response.verificationToken);
+        setIsVerificationSent(true);
       }
       
-      setIsVerificationSent(true);
       return response;
       
     } catch (error) {
       console.error('Registration error:', error);
-      throw error;
+      throw error.response?.data?.message || error.message || 'Registration failed';
     }
   };
 
   const logout = () => {
     localStorage.removeItem('jwt');
     setUser(null);
+    // Notify other components about logout
+    window.dispatchEvent(new Event('storage'));
     navigate('/login');
   };
 
