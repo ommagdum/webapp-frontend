@@ -1,11 +1,52 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const LandingPage = () => {
   const navigate = useNavigate();
-  const { isLoggedIn } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { isLoggedIn, setUser, decodeToken } = useAuth();
   const [emailContent, setEmailContent] = useState(localStorage.getItem('tempEmailContent') || '');
+  const [isProcessingAuth, setIsProcessingAuth] = useState(false);
+
+  // Handle OAuth token from URL
+  useEffect(() => {
+    const token = searchParams.get('token');
+    if (token && !isProcessingAuth) {
+      const processToken = async () => {
+        try {
+          setIsProcessingAuth(true);
+          // Store the token
+          localStorage.setItem('jwt', token);
+          
+          // Decode the token to get user data
+          const decodedUser = decodeToken(token);
+          
+          if (!decodedUser) {
+            throw new Error('Failed to decode authentication token');
+          }
+          
+          // Update auth state
+          setUser(decodedUser);
+          localStorage.setItem('user', JSON.stringify(decodedUser));
+          
+          // Navigate to dashboard
+          navigate('/dashboard', { replace: true });
+        } catch (error) {
+          console.error('Error processing OAuth token:', error);
+          // Clear any invalid token
+          localStorage.removeItem('jwt');
+          localStorage.removeItem('user');
+        } finally {
+          setIsProcessingAuth(false);
+          // Clear the token from URL
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      };
+
+      processToken();
+    }
+  }, [searchParams, navigate, setUser]);
 
   const handleContentChange = (e) => {
     const content = e.target.value;

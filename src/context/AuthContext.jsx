@@ -1,12 +1,13 @@
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { authService } from '../services/api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const navigate = useNavigate();
-  
+  const [searchParams] = useSearchParams();
+
   // Token decoding function with validation and buffer time
   const decodeToken = useCallback((token) => {
     if (!token || typeof token !== 'string') return null;
@@ -51,9 +52,51 @@ export function AuthProvider({ children }) {
     return !!user && user.exp * 1000 > Date.now();
   }, [user]);
 
+  // Handle OAuth token from URL
+  const handleOAuthToken = useCallback(async (token) => {
+    try {
+      if (!token) return null;
+      
+      // Save token to localStorage
+      localStorage.setItem('jwt', token);
+      
+      // Decode the token to get user data
+      const decodedUser = decodeToken(token);
+      
+      if (!decodedUser) {
+        throw new Error('Failed to decode authentication token');
+      }
+      
+      // Update state and notify other components
+      setUser(decodedUser);
+      window.dispatchEvent(new CustomEvent('authstatechange', { detail: decodedUser }));
+      
+      // Navigate to dashboard after successful login
+      navigate('/dashboard');
+      
+      return decodedUser;
+    } catch (error) {
+      console.error('OAuth token handling failed:', error);
+      localStorage.removeItem('jwt');
+      setUser(null);
+      throw error;
+    }
+  }, [decodeToken, navigate]);
+
   // Initialize auth state on mount
   useEffect(() => {
     const initializeAuth = () => {
+      // Check for token in URL first (OAuth redirect)
+      const tokenFromUrl = searchParams.get('token');
+      
+      if (tokenFromUrl) {
+        // Remove token from URL
+        window.history.replaceState({}, '', window.location.pathname);
+        handleOAuthToken(tokenFromUrl);
+        return;
+      }
+      
+      // Check for token in localStorage
       const token = localStorage.getItem('jwt');
       if (token) {
         const decoded = decodeToken(token);
@@ -91,19 +134,9 @@ export function AuthProvider({ children }) {
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [decodeToken, user]);
+  }, [decodeToken, handleOAuthToken]);
 
-  // Listen for auth state change events
-  useEffect(() => {
-    const handleAuthStateChange = (e) => {
-      if (e.detail) {
-        setUser(e.detail);
-      }
-    };
-
-    window.addEventListener('authstatechange', handleAuthStateChange);
-    return () => window.removeEventListener('authstatechange', handleAuthStateChange);
-  }, []);
+  // Login function
   const login = async (credentials) => {
     try {
       if (!credentials?.email?.trim() || !credentials?.password?.trim()) {
@@ -204,12 +237,14 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     localStorage.removeItem('jwt');
+    localStorage.removeItem('user');
     setUser(null);
     // Notify other components about logout
     window.dispatchEvent(new Event('storage'));
     navigate('/login');
   };
 
+  // Create the context value with all the necessary functions and state
   const value = useMemo(() => ({
     user,
     login,
@@ -218,8 +253,19 @@ export function AuthProvider({ children }) {
     refreshUserFromToken,
     isVerificationSent,
     verificationToken,
-    isLoggedIn: !!user
-  }), [user, isVerificationSent, verificationToken]);
+    isLoggedIn: !!user,
+    decodeToken,
+    handleOAuthToken // Expose for manual OAuth handling if needed
+  }), [
+    user,
+    isVerificationSent,
+    verificationToken,
+    login,
+    register,
+    refreshUserFromToken,
+    decodeToken,
+    handleOAuthToken
+  ]);
 
   return (
     <AuthContext.Provider value={value}>
