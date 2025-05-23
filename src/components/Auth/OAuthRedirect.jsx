@@ -12,7 +12,6 @@ const OAuthRedirect = () => {
 
   useEffect(() => {
     const processOAuthCallback = async () => {
-      // Prevent multiple executions
       if (isProcessing || !searchParams) return;
       
       setIsProcessing(true);
@@ -21,44 +20,38 @@ const OAuthRedirect = () => {
       const token = searchParams.get('token');
       const error = searchParams.get('error');
 
+      // Handle errors from backend
       if (error) {
         console.error('OAuth Error:', error);
-        setError(error);
-        setLoading(false);
-        setIsProcessing(false);
+        setError(error || 'Authentication failed');
+        navigate('/login', { state: { error }, replace: true });
         return;
       }
 
-      if (!token) {
-        console.error('No token found in URL');
-        setError('No authentication token found');
-        setLoading(false);
-        setIsProcessing(false);
+      // Validate token format (simple example)
+      if (!token || !token.split('.').length === 3) {
+        setError('Invalid token format');
+        navigate('/login', { replace: true });
         return;
       }
 
       try {
-        // Store the token
+        // Store token and update auth state
         localStorage.setItem('jwt', token);
         
-        // Clear the URL parameters to prevent re-processing
-        const cleanUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
+        // Clear URL parameters
+        window.history.replaceState({}, '', window.location.pathname);
         
-        // Force a state update to trigger ProtectedRoute re-evaluation
+        // Update auth context
         window.dispatchEvent(new Event('storage'));
         
-        // Wait a moment to ensure state is updated
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Navigate to dashboard or previous location
+        // Navigate to intended route
         const from = location.state?.from?.pathname || '/dashboard';
         navigate(from, { replace: true });
         
       } catch (err) {
-        console.error('Error during OAuth callback:', err);
-        setError('Failed to complete authentication');
-        localStorage.removeItem('jwt');
+        console.error('OAuth processing error:', err);
+        setError('Authentication failed');
         navigate('/login', { replace: true });
       } finally {
         setLoading(false);
