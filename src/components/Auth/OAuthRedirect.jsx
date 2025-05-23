@@ -19,48 +19,32 @@ const OAuthRedirect = () => {
       
       const token = searchParams.get('token');
       const error = searchParams.get('error');
-
-      // Handle errors from backend
+  
+      // Clear URL parameters IMMEDIATELY to prevent reprocessing
+      window.history.replaceState({}, '', window.location.pathname);
+  
       if (error) {
-        console.error('OAuth Error:', error);
-        setError(error || 'Authentication failed');
-        navigate('/login', { state: { error }, replace: true });
+        // Handle error
         return;
       }
-
-      // Validate token format (simple example)
-      if (!token || !token.split('.').length === 3) {
-        setError('Invalid token format');
-        navigate('/login', { replace: true });
-        return;
-      }
-
-      try {
-        // Store token and update auth state
-        localStorage.setItem('jwt', token);
-        
-        // Clear URL parameters
-        window.history.replaceState({}, '', window.location.pathname);
-        
-        // Update auth context
-        window.dispatchEvent(new Event('storage'));
-        
-        // Navigate to intended route
-        const from = location.state?.from?.pathname || '/dashboard';
-        navigate(from, { replace: true });
-        
-      } catch (err) {
-        console.error('OAuth processing error:', err);
-        setError('Authentication failed');
-        navigate('/login', { replace: true });
-      } finally {
-        setLoading(false);
-        setIsProcessing(false);
+  
+      if (token) {
+        try {
+          localStorage.setItem('jwt', token);
+          
+          // Force update auth state
+          window.dispatchEvent(new Event('storage'));
+          
+          // Navigate to dashboard
+          navigate(location.state?.from?.pathname || '/dashboard', { replace: true });
+        } catch (err) {
+          // Handle error
+        }
       }
     };
-
+  
     processOAuthCallback();
-  }, [searchParams, navigate, isProcessing, location.state]);
+  }, [searchParams, navigate, isProcessing]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
