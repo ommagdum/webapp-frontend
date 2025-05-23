@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import LoadingSpinner from '../LoadingSpinner';
+import { AuthContext } from '../context/AuthContext';
 
 const OAuthRedirect = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const [error, setError] = useState(null);
+  const { setUser } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -82,7 +83,8 @@ const OAuthRedirect = () => {
           replace: true,
           state: { 
             from: location,
-            message: 'Successfully logged in!'
+            message: 'Successfully logged in!',
+            skipAuthCheck: true  // Skip auth check for this navigation
           }
         });
       } catch (err) {

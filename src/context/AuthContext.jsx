@@ -7,7 +7,7 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const navigate = useNavigate();
   
-  // Token decoding function with validation
+  // Token decoding function with validation and buffer time
   const decodeToken = useCallback((token) => {
     if (!token || typeof token !== 'string') return null;
     
@@ -19,6 +19,15 @@ export function AuthProvider({ children }) {
       const decoded = JSON.parse(atob(base64));
       
       if (!decoded || !decoded.exp) return null;
+      
+      // Add buffer time (5 minutes) to token expiration
+      const currentTime = Math.floor(Date.now() / 1000);
+      const bufferTime = 300; // 5 minutes in seconds
+      
+      if (decoded.exp < currentTime + bufferTime) {
+        console.warn('Token is near expiry or expired');
+        return null;
+      }
       
       return {
         roles: decoded.roles ? (Array.isArray(decoded.roles) ? decoded.roles : [decoded.roles]) : [],
@@ -44,24 +53,39 @@ export function AuthProvider({ children }) {
 
   // Initialize auth state on mount
   useEffect(() => {
-    const token = localStorage.getItem('jwt');
-    if (token) {
-      const decoded = decodeToken(token);
-      if (decoded?.exp * 1000 > Date.now()) {
-        setUser(decoded);
-      } else {
-        localStorage.removeItem('jwt');
+    const initializeAuth = () => {
+      const token = localStorage.getItem('jwt');
+      if (token) {
+        const decoded = decodeToken(token);
+        if (decoded) {
+          setUser(decoded);
+        } else {
+          // Token is invalid or expired
+          localStorage.removeItem('jwt');
+          localStorage.removeItem('user');
+        }
       }
-    }
+    };
+
+    initializeAuth();
 
     // Listen for auth state changes from other tabs/windows
-    const handleStorageChange = () => {
-      const token = localStorage.getItem('jwt');
-      if (!token) {
-        setUser(null);
-      } else if (!user || token !== localStorage.getItem('jwt')) {
-        const decoded = decodeToken(token);
-        setUser(decoded);
+    const handleStorageChange = (event) => {
+      // Only process storage events that modify the JWT
+      if (event.key === 'jwt' || event.key === null) {
+        const token = localStorage.getItem('jwt');
+        if (!token) {
+          setUser(null);
+        } else {
+          const decoded = decodeToken(token);
+          if (decoded) {
+            setUser(decoded);
+          } else {
+            localStorage.removeItem('jwt');
+            localStorage.removeItem('user');
+            setUser(null);
+          }
+        }
       }
     };
 
